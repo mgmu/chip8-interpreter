@@ -1,2 +1,2 @@
 # chip8-interpreter
-An interpreter for the CHIP-8 programming language writtern in C.
+An interpreter for the CHIP-8 programming language written in C.
