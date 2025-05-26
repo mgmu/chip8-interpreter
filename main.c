@@ -14,6 +14,8 @@
 #define MAX_ROM_LEN       3840
 #define CHAR_SPRITES_SIZE 80
 #define CHAR_SPRITES_ADDR 80    // addr 0x0050
+#define DISPLAY_WIDTH     64
+#define DISPLAY_HEIGHT    32
 
 uint8_t char_sprites[CHAR_SPRITES_SIZE] = {
     0xf0, 0x90, 0x90, 0x90, 0xf0, // "0"
@@ -41,6 +43,7 @@ struct interpreter {
     uint16_t pc;                // program counter
     uint8_t  sp;                // stack pointer
     uint16_t stack[LEVELS_SIZE]; // execution stack
+    uint8_t  display[DISPLAY_WIDTH * DISPLAY_HEIGHT]; // display
 };
 
 /*
@@ -57,7 +60,7 @@ void init(struct interpreter *chip) {
     chip->pc  = (uint16_t)PC_INIT;
     chip->sp  = 0;
     bzero(chip->stack, LEVELS_SIZE);
-
+    bzero(chip->display, DISPLAY_WIDTH * DISPLAY_HEIGHT);
     for (int i = 0; i < CHAR_SPRITES_SIZE; i++)
         chip->ram[CHAR_SPRITES_ADDR + i] = char_sprites[i];
 }
