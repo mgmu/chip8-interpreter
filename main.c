@@ -16,6 +16,9 @@
 #define CHAR_SPRITES_ADDR 80    // addr 0x0050
 #define DISPLAY_WIDTH     64
 #define DISPLAY_HEIGHT    32
+#define KEYBOARD_SIZE     16
+#define KEY_UP            0
+#define KEY_DOWN          255
 
 uint8_t char_sprites[CHAR_SPRITES_SIZE] = {
     0xf0, 0x90, 0x90, 0x90, 0xf0, // "0"
@@ -44,6 +47,7 @@ struct interpreter {
     uint8_t  sp;                // stack pointer
     uint16_t stack[LEVELS_SIZE]; // execution stack
     uint8_t  display[DISPLAY_WIDTH * DISPLAY_HEIGHT]; // display
+    uint8_t  keyboard[KEYBOARD_SIZE]; // keyboard
 };
 
 /*
@@ -63,6 +67,7 @@ void init(struct interpreter *chip) {
     bzero(chip->display, DISPLAY_WIDTH * DISPLAY_HEIGHT);
     for (int i = 0; i < CHAR_SPRITES_SIZE; i++)
         chip->ram[CHAR_SPRITES_ADDR + i] = char_sprites[i];
+    bzero(chip->keyboard, KEYBOARD_SIZE);
 }
 
 int main(int argc, char **argv) {
