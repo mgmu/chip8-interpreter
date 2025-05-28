@@ -249,10 +249,10 @@ int dec_exec(const uint16_t instr, struct interpreter *chip) {
     int      res    = 0;
     uint16_t opcode = instr >> 12;
     uint16_t nnn    = instr & NNN_MASK;
-    uint16_t n      = instr & N_MASK;
-    uint16_t x      = instr & X_MASK;
-    uint16_t y      = instr & Y_MASK;
-    uint16_t kk     = instr & KK_MASK;
+    uint8_t n       = instr & N_MASK;
+    uint8_t x       = (instr & X_MASK) >> 8;
+    uint8_t y       = (instr & Y_MASK) >> 8;
+    uint8_t kk      = instr & KK_MASK;
     switch (opcode) {
       case 0x0: // 0nnn, 00e0, 00ee
         res = dec_exec0(instr, chip);
