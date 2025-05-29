@@ -21,19 +21,11 @@ uint8_t char_sprites[CHAR_SPRITES_SIZE] = {
     0xf0, 0x80, 0xf0, 0x80, 0x80  // "F"
 };
 
-void zero(void *buf, int size) {
-    unsigned char *cbuf = (unsigned char *)buf;
-    for (int i = 0; i < size; i++)
-        cbuf[i] = 0;
-}
-
 void init(struct interpreter *chip) {
     if (chip == NULL)
         return;
-    /* bzero(chip->ram, RAM_SIZE); */
     for (int i = 0; i < RAM_SIZE; i++)
         chip->ram[i] = (uint8_t)0;
-    /* bzero(chip->registers, REGISTERS_SIZE); */
     for (int i = 0; i < REGISTERS_SIZE; i++)
         chip->registers[i] = (uint8_t)0;
     chip->I  = (uint8_t)0;
@@ -41,17 +33,14 @@ void init(struct interpreter *chip) {
     chip->sp = (uint8_t)0;
     chip->dt = (uint8_t)0;
     chip->st = (uint8_t)0;
-    /* bzero(chip->stack, LEVELS_SIZE); */
     for (int i = 0; i < LEVELS_SIZE; i++)
         chip->stack[i] = (uint16_t)0;
     for (int i = 0; i < VBUF_HEIGHT; i++) {
         for (int j = 0; j < VBUF_WIDTH; j++)
-            chip->vbuf[i][j] = (uint32_t)0;
+            chip->vbuf[i * VBUF_WIDTH + j] = (uint32_t)0;
     }
-    /* bzero(chip->vbuf, VBUF_WIDTH * VBUF_HEIGHT); */
     for (int i = 0; i < CHAR_SPRITES_SIZE; i++)
         chip->ram[CHAR_SPRITES_ADDR + i] = char_sprites[i];
-    /* bzero(chip->keyboard, KEYBOARD_SIZE); */
     for (int i = 0; i < KEYBOARD_SIZE; i++)
         chip->keyboard[i] = (uint8_t)0;
     srandom(time(NULL));
@@ -285,12 +274,12 @@ int dec_exec(const uint16_t instr, struct interpreter *chip, int mode) {
                 uint8_t bit  = (byte >> (7-j)) & 1;
                 int     line = (chip->registers[y] + i) % VBUF_HEIGHT;
                 int     col  = (chip->registers[x] + j) % VBUF_WIDTH;
-                if (chip->vbuf[line][col] == PIXEL_ON && bit == 1)
+                if (chip->vbuf[line * VBUF_WIDTH + col] == PIXEL_ON && bit == 1)
                     chip->registers[VF] = 1;
                 uint32_t new_pixel = 0;
                 if (bit == 1)
                     new_pixel = PIXEL_ON;
-                chip->vbuf[line][col] ^= new_pixel;
+                chip->vbuf[line * VBUF_WIDTH + col] ^= new_pixel;
             }
         }
         break;
@@ -341,16 +330,16 @@ void run_rom_cycle(struct interpreter *chip, struct proc_state *ps, int mode) {
     if (chip->st > 0)
         chip->st--;
 
-    // temporary display
-    for (int i = 0; i < VBUF_HEIGHT; i++) {
-        for (int j = 0; j < VBUF_WIDTH; j++) {
-            if (chip->vbuf[i][j] == PIXEL_OFF)
-                printf(" ");
-            else
-                printf("#");
-            if (j == VBUF_WIDTH - 1)
-                printf("\n");
-        }
-    }
-    printf("\n");
+    /* // temporary display */
+    /* for (int i = 0; i < VBUF_HEIGHT; i++) { */
+    /*     for (int j = 0; j < VBUF_WIDTH; j++) { */
+    /*         if (chip->vbuf[i][j] == PIXEL_OFF) */
+    /*             printf(" "); */
+    /*         else */
+    /*             printf("#"); */
+    /*         if (j == VBUF_WIDTH - 1) */
+    /*             printf("\n"); */
+    /*     } */
+    /* } */
+    /* printf("\n"); */
 }
