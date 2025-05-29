@@ -35,7 +35,7 @@ struct interpreter {
     uint8_t  dt;                             // delay timer
     uint8_t  st;                             // sound timer
     uint16_t stack[LEVELS_SIZE];             // execution stack
-    uint32_t vbuf[VBUF_HEIGHT][VBUF_WIDTH];  // video buffer
+    uint32_t vbuf[VBUF_HEIGHT * VBUF_WIDTH]; // video buffer
     uint8_t  keyboard[KEYBOARD_SIZE];        // keyboard
 };
 

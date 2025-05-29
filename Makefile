@@ -1,7 +1,7 @@
 all: chip
 
 chip: main.o interpreter.o
-	gcc -o chip8 main.o interpreter.o
+	gcc -o chip8 main.o interpreter.o `pkg-config --libs --cflags sdl3`
 
 main.o: main.c
 	gcc -c main.c
