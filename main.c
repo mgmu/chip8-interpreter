@@ -16,7 +16,7 @@
 #define MAX_ROM_SIZE     3840   // The maximal size in bytes of a ROM
 
 int main(int argc, char **argv) {
-    if (argc != 2) {
+    if (argc != 2 && argc != 3) {
         dprintf(STDERR_FILENO, MISSING_FILE_ERR);
         return EXIT_FAILURE;
     }
@@ -60,6 +60,30 @@ int main(int argc, char **argv) {
         perror("read()");
         close(fd);
         return EXIT_FAILURE;
+    }
+
+    int debug = 0;
+    if (argc == 3)
+        debug = 1;
+
+    struct proc_state ps;
+    ps.curr_instr = 0;
+    ps.pc         = 0;
+    ps.err_code   = 0;
+    while (1) {
+        if (debug)
+            getchar();
+        run_rom_cycle(&chip, &ps, debug);
+        if (ps.err_code > 0) {
+            dprintf(STDERR_FILENO, "Error while running ROM, quitting...\n");
+            dprintf(
+              STDERR_FILENO,
+              "[Proc state] instr=%#06x, PC=%#06x, err=%d\n",
+              ps.curr_instr, ps.pc, ps.err_code
+            );
+            close(fd);
+            return EXIT_FAILURE;
+        }
     }
 
     if (close(fd) < 0) {

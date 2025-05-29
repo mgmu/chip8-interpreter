@@ -1,4 +1,6 @@
 #include "interpreter.h"
+#include <stddef.h>
+#include <stdio.h>
 
 uint8_t char_sprites[CHAR_SPRITES_SIZE] = {
     0xf0, 0x90, 0x90, 0x90, 0xf0, // "0"
@@ -19,21 +21,39 @@ uint8_t char_sprites[CHAR_SPRITES_SIZE] = {
     0xf0, 0x80, 0xf0, 0x80, 0x80  // "F"
 };
 
+void zero(void *buf, int size) {
+    unsigned char *cbuf = (unsigned char *)buf;
+    for (int i = 0; i < size; i++)
+        cbuf[i] = 0;
+}
+
 void init(struct interpreter *chip) {
     if (chip == NULL)
         return;
-    bzero(chip->ram, RAM_SIZE);
-    bzero(chip->registers, REGISTERS_SIZE);
-    chip->I  = 0;
+    /* bzero(chip->ram, RAM_SIZE); */
+    for (int i = 0; i < RAM_SIZE; i++)
+        chip->ram[i] = (uint8_t)0;
+    /* bzero(chip->registers, REGISTERS_SIZE); */
+    for (int i = 0; i < REGISTERS_SIZE; i++)
+        chip->registers[i] = (uint8_t)0;
+    chip->I  = (uint8_t)0;
     chip->pc = (uint16_t)PC_INIT;
-    chip->sp = 0;
-    chip->dt = 0;
-    chip->st = 0;
-    bzero(chip->stack, LEVELS_SIZE);
-    bzero(chip->vbuf, VBUF_WIDTH * VBUF_HEIGHT);
+    chip->sp = (uint8_t)0;
+    chip->dt = (uint8_t)0;
+    chip->st = (uint8_t)0;
+    /* bzero(chip->stack, LEVELS_SIZE); */
+    for (int i = 0; i < LEVELS_SIZE; i++)
+        chip->stack[i] = (uint16_t)0;
+    for (int i = 0; i < VBUF_HEIGHT; i++) {
+        for (int j = 0; j < VBUF_WIDTH; j++)
+            chip->vbuf[i][j] = (uint32_t)0;
+    }
+    /* bzero(chip->vbuf, VBUF_WIDTH * VBUF_HEIGHT); */
     for (int i = 0; i < CHAR_SPRITES_SIZE; i++)
         chip->ram[CHAR_SPRITES_ADDR + i] = char_sprites[i];
-    bzero(chip->keyboard, KEYBOARD_SIZE);
+    /* bzero(chip->keyboard, KEYBOARD_SIZE); */
+    for (int i = 0; i < KEYBOARD_SIZE; i++)
+        chip->keyboard[i] = (uint8_t)0;
     srandom(time(NULL));
 }
 
@@ -49,7 +69,8 @@ int dec_exec0(uint16_t instr, struct interpreter *chip) {
         chip->sp--;
         break;
       default:
-        return -1;
+        // ignore 0x0nnn
+        break;
     }
     return 0;
 }
@@ -82,6 +103,7 @@ int dec_exec8(uint16_t n, uint16_t x, uint16_t y, struct interpreter *chip) {
             chip->registers[VF] = 1;
         else
             chip->registers[VF] = 0;
+        chip->registers[x] = chip->registers[x] - chip->registers[y];
         break;
       case 6:
         if ((chip->registers[x] & 1) == 1)
@@ -97,12 +119,13 @@ int dec_exec8(uint16_t n, uint16_t x, uint16_t y, struct interpreter *chip) {
             chip->registers[VF] = 0;
         chip->registers[x] = chip->registers[y] - chip->registers[x];
         break;
-      case 15:
+      case 14:
         if ((chip->registers[x] & 128) == 1)
             chip->registers[VF] = 1;
         else
             chip->registers[VF] = 0;
         chip->registers[x] *= 2;
+        break;
       default:
         return -1;
     }
@@ -118,6 +141,7 @@ int dec_execE(uint16_t x, uint16_t kk, struct interpreter *chip) {
       case 0xa1:
         if (chip->keyboard[x] == KEY_UP)
             chip->pc += 2;
+        break;
       default:
         return -1;
     }
@@ -163,11 +187,11 @@ int dec_execF(uint16_t x, uint16_t kk, struct interpreter *chip) {
         chip->ram[chip->I + 2] = tmp;
         break;
       case 0x55:
-        for (int i = 0; i < x; i++)
-            chip->ram[chip->I + i] = chip->registers[x];
+        for (int i = 0; i <= x; i++)
+            chip->ram[chip->I + i] = chip->registers[i];
         break;
       case 0x65:
-        for (int i = 0; i < x; i++)
+        for (int i = 0; i <= x; i++)
             chip->registers[i] = chip->ram[chip->I + i];
         break;
       default:
@@ -176,7 +200,7 @@ int dec_execF(uint16_t x, uint16_t kk, struct interpreter *chip) {
     return 0;
 }
 
-int dec_exec(const uint16_t instr, struct interpreter *chip) {
+int dec_exec(const uint16_t instr, struct interpreter *chip, int mode) {
     if (chip == NULL)
         return -1;
     int      res    = 0;
@@ -184,8 +208,21 @@ int dec_exec(const uint16_t instr, struct interpreter *chip) {
     uint16_t nnn    = instr & NNN_MASK;
     uint8_t n       = instr & N_MASK;
     uint8_t x       = (instr & X_MASK) >> 8;
-    uint8_t y       = (instr & Y_MASK) >> 8;
+    uint8_t y       = (instr & Y_MASK) >> 4;
     uint8_t kk      = instr & KK_MASK;
+    if (mode) {
+        printf("\nCYCLE:\n");
+        printf("instr:  %#06x n:  %#06x\n", instr, n);
+        printf("opcode: %#06x x:  %#06x\n", opcode, x);
+        printf("nnn:    %#06x y:  %#06x\n", nnn, y);
+        printf("kk:     %#06x pc: %#05x\n", kk, chip->pc);
+        int c = 0;
+        for (int i = 0; i < 15; i++) {
+            printf("reg[%02d]: %03d ", i, chip->registers[i]);
+            if (c++ % 5 == 4)
+                printf("\n");
+        }
+    }
     switch (opcode) {
       case 0x0: // 0nnn, 00e0, 00ee
         res = dec_exec0(instr, chip);
@@ -242,17 +279,18 @@ int dec_exec(const uint16_t instr, struct interpreter *chip) {
         break;
       case 0xd: // Dxyn
         chip->registers[VF] = 0;
-        uint8_t vx = chip->registers[x];
-        uint8_t vy = chip->registers[y];
         for (uint8_t i = 0; i < n; i++) {
             uint8_t byte = chip->ram[chip->I + i];
             for (uint8_t j = 0; j < 8; j++) {
-                uint8_t bit  = (byte >> j) & 1;
-                int     line = (chip->registers[x] + i) % VBUF_WIDTH;
-                int     col  = (chip->registers[y] + j) % VBUF_HEIGHT;
-                if (chip->vbuf[line][col] == PIXEL_ON && bit == 2)
+                uint8_t bit  = (byte >> (7-j)) & 1;
+                int     line = (chip->registers[y] + i) % VBUF_HEIGHT;
+                int     col  = (chip->registers[x] + j) % VBUF_WIDTH;
+                if (chip->vbuf[line][col] == PIXEL_ON && bit == 1)
                     chip->registers[VF] = 1;
-                chip->vbuf[line][col] ^= bit;
+                uint32_t new_pixel = 0;
+                if (bit == 1)
+                    new_pixel = PIXEL_ON;
+                chip->vbuf[line][col] ^= new_pixel;
             }
         }
         break;
@@ -261,9 +299,58 @@ int dec_exec(const uint16_t instr, struct interpreter *chip) {
         break;
       case 0xf: // Fx07, Fx0A, Fx15, Fx18, Fx1C, Fx29, Fx33, Fx55, Fx65
         res = dec_execF(x, kk, chip);
+        break;
       default:
         res = -1;
         break;
     }
     return res;
+}
+
+void run_rom_cycle(struct interpreter *chip, struct proc_state *ps, int mode) {
+    // check that pc is still in program
+    if (chip->pc == RAM_SIZE) {
+        ps->curr_instr = 0;
+        ps->pc = chip->pc;
+        ps->err_code = 0;
+        return;
+    }
+
+    // read instruction
+    uint16_t lb = (uint16_t)chip->ram[chip->pc] << 8;
+    uint16_t rb = (uint16_t)chip->ram[chip->pc + 1];
+    uint16_t instr = lb | rb;
+    ps->curr_instr = instr;
+
+    // set program counter to next instruction
+    chip->pc += 2;
+    ps->pc = chip->pc;
+    if (instr == 0)
+        return;
+
+    // decode and execute instruction
+    int res = dec_exec(instr, chip, mode);
+    if (res < 0) {
+        ps->err_code = 1;
+        return;
+    }
+
+    // update timers
+    if (chip->dt > 0)
+        chip->dt--;
+    if (chip->st > 0)
+        chip->st--;
+
+    // temporary display
+    for (int i = 0; i < VBUF_HEIGHT; i++) {
+        for (int j = 0; j < VBUF_WIDTH; j++) {
+            if (chip->vbuf[i][j] == PIXEL_OFF)
+                printf(" ");
+            else
+                printf("#");
+            if (j == VBUF_WIDTH - 1)
+                printf("\n");
+        }
+    }
+    printf("\n");
 }
