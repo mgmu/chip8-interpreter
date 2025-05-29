@@ -1,7 +1,6 @@
 #ifndef INTERPRETER_H
 #define INTERPRETER_H
 #include <stdint.h>
-#include <stddef.h>
 #include <stdlib.h>
 #include <time.h>
 #include <strings.h>
@@ -40,6 +39,12 @@ struct interpreter {
     uint8_t  keyboard[KEYBOARD_SIZE];        // keyboard
 };
 
+struct proc_state {
+    uint16_t curr_instr;        // current instruction
+    uint16_t pc;                // value of interpreter program counter
+    uint8_t  err_code;          // error code
+};
+
 /*
  * Initializes chip8 interpreter memory.
  * All registers and ram are zero'ed, PC is set to its initial value and
@@ -71,8 +76,17 @@ int dec_execF(uint16_t x, uint16_t kk, struct interpreter *chip);
 
 /*
  * Decodes the given instruction and executes it. On success, returns 0, -1
- * otherwise.
+ * otherwise. If mode is debug (mode != 0), prints to stdout what the
+ * decoder/executer is doing.
  */
-int dec_exec(const uint16_t instr, struct interpreter *chip);
+int dec_exec(const uint16_t instr, struct interpreter *chip, int mode);
+
+/*
+ * Runs one cycle of the ROM loaded in chip. Populates ps with appropriate
+ * values about the cycle termination state. Chip and ps must be previously
+ * initialized. If mode is 0, runs the cycle normally, otherwise runs it in
+ * debug mode (prints to standard output information about the cycle).
+ */
+void run_rom_cycle(struct interpreter *chip, struct proc_state *ps, int mode);
 
 #endif
