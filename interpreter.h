@@ -36,7 +36,10 @@ struct interpreter {
     uint8_t  st;                             // sound timer
     uint16_t stack[LEVELS_SIZE];             // execution stack
     uint32_t vbuf[VBUF_HEIGHT * VBUF_WIDTH]; // video buffer
-    uint8_t  keyboard[KEYBOARD_SIZE];        // keyboard
+    uint8_t  keyboard[KEYBOARD_SIZE];        // current state of keyboard
+    uint8_t  prev_keyboard[KEYBOARD_SIZE];   // previous state of keyboard
+    uint8_t  checking_key_press;             // flag for key press check
+    uint8_t  update_display;                 // update display flag
 };
 
 struct proc_state {

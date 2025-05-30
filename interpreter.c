@@ -37,12 +37,16 @@ void init(struct interpreter *chip) {
         chip->stack[i] = (uint16_t)0;
     for (int i = 0; i < VBUF_HEIGHT; i++) {
         for (int j = 0; j < VBUF_WIDTH; j++)
-            chip->vbuf[i * VBUF_WIDTH + j] = (uint32_t)0;
+            chip->vbuf[i * VBUF_WIDTH + j] = (uint32_t)PIXEL_OFF;
     }
     for (int i = 0; i < CHAR_SPRITES_SIZE; i++)
         chip->ram[CHAR_SPRITES_ADDR + i] = char_sprites[i];
     for (int i = 0; i < KEYBOARD_SIZE; i++)
-        chip->keyboard[i] = (uint8_t)0;
+        chip->keyboard[i] = (uint8_t)KEY_UP;
+    for (int i = 0; i < KEYBOARD_SIZE; i++)
+        chip->prev_keyboard[i] = (uint8_t)KEY_UP;
+    chip->checking_key_press = 0;
+    chip->update_display = 1;
     srandom(time(NULL));
 }
 
@@ -51,7 +55,11 @@ int dec_exec0(uint16_t instr, struct interpreter *chip) {
         return -1;
     switch (instr) {
       case 0x00e0:
-        bzero(chip->vbuf, VBUF_WIDTH * VBUF_HEIGHT);
+        chip->update_display = 1;
+        for (int i = 0; i < VBUF_HEIGHT; i++) {
+            for (int j = 0; j < VBUF_WIDTH; j++)
+                chip->vbuf[i * VBUF_WIDTH + j] = 0;
+        }
         break;
       case 0x00ee:
         chip->pc = chip->stack[chip->sp];
@@ -139,20 +147,35 @@ int dec_execE(uint16_t x, uint16_t kk, struct interpreter *chip) {
 
 int dec_execF(uint16_t x, uint16_t kk, struct interpreter *chip) {
     uint8_t tmp = 0;
-    int no_down = 1;
+    uint8_t key_pressed = 0;
     switch (kk) {
       case 0x07:
         chip->registers[x] = chip->dt;
         break;
       case 0x0A:
-        while (no_down) {
+        if (!chip->checking_key_press) {
             for (int i = 0; i < KEYBOARD_SIZE; i++) {
-                if (chip->keyboard[i] == KEY_DOWN) {
-                    no_down = 0;
+                if (chip->keyboard[i] == KEY_DOWN)
+                    chip->prev_keyboard[i] == KEY_DOWN;
+                else
+                    chip->prev_keyboard[i] == KEY_UP;
+            }
+            chip->checking_key_press = 1;
+            chip->pc -= 2;
+        } else {
+            for (int i = 0; i < KEYBOARD_SIZE; i++) {
+                if (chip->keyboard[i] == KEY_UP
+                        && chip->prev_keyboard[i] == KEY_DOWN) {
+                    chip->checking_key_press = 0;
                     chip->registers[x] = i;
+                    key_pressed = 1;
                     break;
                 }
             }
+            if (!key_pressed)
+                chip->pc -= 2;
+            for (int i = 0; i < KEYBOARD_SIZE; i++)
+                chip->prev_keyboard[i] = chip->keyboard[i];
         }
         break;
       case 0x15:
@@ -211,6 +234,7 @@ int dec_exec(const uint16_t instr, struct interpreter *chip, int mode) {
             if (c++ % 5 == 4)
                 printf("\n");
         }
+        printf("checking key press: %d\n", chip->checking_key_press);
     }
     switch (opcode) {
       case 0x0: // 0nnn, 00e0, 00ee
@@ -264,7 +288,7 @@ int dec_exec(const uint16_t instr, struct interpreter *chip, int mode) {
         chip->pc = nnn + chip->registers[0];
         break;
       case 0xc: // Cxkk
-        chip->registers[x] == kk & (random() % 256);
+        chip->registers[x] = kk & (random() % 256);
         break;
       case 0xd: // Dxyn
         chip->registers[VF] = 0;
@@ -282,6 +306,7 @@ int dec_exec(const uint16_t instr, struct interpreter *chip, int mode) {
                 chip->vbuf[line * VBUF_WIDTH + col] ^= new_pixel;
             }
         }
+        chip->update_display = 1;
         break;
       case 0xe: // Ex9E, ExA1
         res = dec_execE(x, kk, chip);
@@ -298,10 +323,10 @@ int dec_exec(const uint16_t instr, struct interpreter *chip, int mode) {
 
 void run_rom_cycle(struct interpreter *chip, struct proc_state *ps, int mode) {
     // check that pc is still in program
-    if (chip->pc == RAM_SIZE) {
+    if (chip->pc > RAM_SIZE) {
         ps->curr_instr = 0;
         ps->pc = chip->pc;
-        ps->err_code = 0;
+        ps->err_code = 1;
         return;
     }
 
@@ -329,17 +354,4 @@ void run_rom_cycle(struct interpreter *chip, struct proc_state *ps, int mode) {
         chip->dt--;
     if (chip->st > 0)
         chip->st--;
-
-    /* // temporary display */
-    /* for (int i = 0; i < VBUF_HEIGHT; i++) { */
-    /*     for (int j = 0; j < VBUF_WIDTH; j++) { */
-    /*         if (chip->vbuf[i][j] == PIXEL_OFF) */
-    /*             printf(" "); */
-    /*         else */
-    /*             printf("#"); */
-    /*         if (j == VBUF_WIDTH - 1) */
-    /*             printf("\n"); */
-    /*     } */
-    /* } */
-    /* printf("\n"); */
 }

@@ -70,6 +70,7 @@ int main(int argc, char **argv) {
     int              scale  = atoi(argv[2]);
     int              width  = VBUF_WIDTH * scale;
     int              height = VBUF_HEIGHT * scale;
+    int              ret    = EXIT_SUCCESS;
     bool             done   = false;
     SDL_WindowFlags  flags  = SDL_WINDOW_OPENGL;
     SDL_Init(SDL_INIT_VIDEO);
@@ -80,8 +81,8 @@ int main(int argc, char **argv) {
           "Could not create window and renderer: %s\n",
           SDL_GetError()
         );
-        close(fd);
-        return EXIT_FAILURE;
+        ret = EXIT_FAILURE;
+        goto clean_up;
     }
 
     SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
@@ -92,11 +93,8 @@ int main(int argc, char **argv) {
           "Could not create texture: %s\n",
           SDL_GetError()
         );
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        close(fd);
-        return EXIT_FAILURE;
+        ret = EXIT_FAILURE;
+        goto clean_up;
     }
 
     int debug = 0;
@@ -108,10 +106,12 @@ int main(int argc, char **argv) {
     ps.pc         = 0;
     ps.err_code   = 0;
 
-    int ret = EXIT_SUCCESS;
-    while (!done) {
-        SDL_Event event;
 
+    while (!done) {
+        // run rom at 60Hz
+        SDL_Delay(16); // 60Hz = 1/60 = 16.67ms
+        
+        SDL_Event event;
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
               case SDL_EVENT_QUIT: // window
@@ -233,9 +233,6 @@ int main(int argc, char **argv) {
         if (done) // do not run one more cycle if user wants to quit
             break;
 
-        // debug mode: waits until lf char is typed before running next cycle
-        if (debug)
-            getchar();
         run_rom_cycle(&chip, &ps, debug);
         if (ps.err_code > 0) {
             dprintf(STDERR_FILENO, "Error while running ROM, quitting...\n");
@@ -245,33 +242,36 @@ int main(int argc, char **argv) {
               ps.curr_instr, ps.pc, ps.err_code
             );
             ret  = EXIT_FAILURE;
-            done = true;
+            goto clean_up;
         }
 
-        // scaling, scale must be a power of 2
-        uint32_t sc_buf[width * height];
-        for (int old_i = 0; old_i < VBUF_HEIGHT; old_i++) {
-            for (int old_j = 0; old_j < VBUF_WIDTH; old_j++) {
-                int top_left_i = old_i * scale;
-                int top_left_j = old_j * scale;
-                for (int i = top_left_i; i < top_left_i + scale; i++) {
-                    for (int j = top_left_j; j < top_left_j + scale; j++) {
-                        uint32_t px = chip.vbuf[old_i * VBUF_WIDTH + old_j];
-                        sc_buf[i * width + j] = px;
-                    }
+        // set background to black and clear screen
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+        SDL_RenderClear(renderer);
+
+        // draw pixels
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
+        SDL_FRect rect = {.x = 0, .y = 0, .w = scale, .h = scale};
+        for (int i = 0; i < VBUF_HEIGHT * VBUF_WIDTH; i++) {
+            if (chip.vbuf[i] == PIXEL_ON) {
+                rect.x = (i % VBUF_WIDTH) * scale;
+                rect.y = (i / VBUF_WIDTH) * scale;
+                if (!SDL_RenderFillRect(renderer, &rect)) {
+                    SDL_LogError(
+                      SDL_LOG_CATEGORY_APPLICATION,
+                      "Could not draw pixel: %s\n",
+                      SDL_GetError()
+                    );
+                    ret = EXIT_FAILURE;
+                    goto clean_up;
                 }
             }
         }
-
-        // from sdl doc: the number of bytes in a row of pixel data
-        int pitch = sizeof(sc_buf[0]) * width;
-        SDL_UpdateTexture(texture, NULL, sc_buf, pitch);
-        SDL_RenderClear(renderer);
-        SDL_RenderTexture(renderer, texture, NULL, NULL);
         SDL_RenderPresent(renderer);
     }
 
     // Destroy and cleanup
+ clean_up:
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
