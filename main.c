@@ -152,10 +152,16 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    // Get scale from arguments
+    int scale = atoi(argv[2]);
+    if (scale <= 0) {
+        dprintf(STDERR_FILENO, "Invalid scale value: %d\n", scale);
+        return EXIT_FAILURE;
+    }
+
     // Window and renderer initialization
     SDL_Window      *window;
     SDL_Renderer    *renderer;
-    int              scale  = atoi(argv[2]);
     int              width  = VBUF_WIDTH * scale;
     int              height = VBUF_HEIGHT * scale;
     int              ret    = EXIT_SUCCESS;
