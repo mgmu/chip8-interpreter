@@ -386,8 +386,8 @@ int dec_exec(const uint16_t instr, struct interpreter *chip, int mode) {
 static void update_timer(uint8_t *timer) {
     if (timer == NULL)
         return;
-    if (timer > 0)
-        timer--;
+    if (*timer > 0)
+        (*timer)--;
 }
 
 void run_rom_cycle(struct interpreter *chip, struct proc_state *ps, int mode) {
@@ -418,7 +418,6 @@ void run_rom_cycle(struct interpreter *chip, struct proc_state *ps, int mode) {
         return;
     }
 
-    // update timers
     update_timer(&chip->dt);
     update_timer(&chip->st);
 }
