@@ -1,6 +1,16 @@
 #include "interpreter.h"
 #include <stddef.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#define NOT_REGULAR_ERR  "Not a regular file\n"
+#define TOO_LARGE_ERR    "File too large\n"
+#define TOO_SHORT_ERR    "File too short\n"
+#define MAX_ROM_SIZE     3840   // The maximal size in bytes of a ROM
 
 uint8_t char_sprites[CHAR_SPRITES_SIZE] = {
     0xf0, 0x90, 0x90, 0x90, 0xf0, // "0"
@@ -50,7 +60,52 @@ void init(struct interpreter *chip) {
     srandom(time(NULL));
 }
 
-int dec_exec0(uint16_t instr, struct interpreter *chip) {
+int load_rom(char *filename, struct interpreter *chip) {
+    if (chip == NULL || filename == NULL)
+        return -1;
+    
+    struct stat sb;
+    if (stat(filename, &sb) == -1) {
+        perror("stat()");
+        return -1;
+    }
+
+    if (!S_ISREG(sb.st_mode)) {
+        dprintf(STDERR_FILENO, NOT_REGULAR_ERR);
+        return -1;
+    }
+
+    if (sb.st_size > MAX_ROM_SIZE) {
+        dprintf(STDERR_FILENO, TOO_LARGE_ERR);
+        return -1;
+    }
+
+    if (sb.st_size <= 0) {
+        dprintf(STDERR_FILENO, TOO_SHORT_ERR);
+        return -1;
+    }
+
+    int fd = open(filename, O_RDONLY);
+    if (fd < 0) {
+        perror("open()");
+        return -1;
+    }
+
+    if (read(fd, chip->ram + chip->pc, sb.st_size) < 0) {
+        perror("read()");
+        close(fd);
+        return -1;
+    }
+
+    if (close(fd) < 0) {
+        perror("close()");
+        return -1;
+    }
+    return 0;
+}
+
+// Decodes and executes 0nnn, 00E0, 00EE instructions. 0nnn is in fact ignored.
+static int dec_exec0(uint16_t instr, struct interpreter *chip) {
     if (chip == NULL)
         return -1;
     switch (instr) {
@@ -72,7 +127,9 @@ int dec_exec0(uint16_t instr, struct interpreter *chip) {
     return 0;
 }
 
-int dec_exec8(uint16_t n, uint16_t x, uint16_t y, struct interpreter *chip) {
+// Decodes and executes the instructions 8xy0, ..., 8xy7, 8xyE.
+static int dec_exec8(uint16_t n, uint16_t x, uint16_t y,
+        struct interpreter *chip) {
     if (chip == NULL)
         return -1;
     switch (n) {
@@ -129,7 +186,8 @@ int dec_exec8(uint16_t n, uint16_t x, uint16_t y, struct interpreter *chip) {
     return 0;
 }
 
-int dec_execE(uint16_t x, uint16_t kk, struct interpreter *chip) {
+// Decodes and executes the instructions Ex9E, ExA1.
+static int dec_execE(uint16_t x, uint16_t kk, struct interpreter *chip) {
     switch (kk) {
       case 0x9e:
         if (chip->keyboard[x] == KEY_DOWN)
@@ -145,7 +203,9 @@ int dec_execE(uint16_t x, uint16_t kk, struct interpreter *chip) {
     return 0;
 }
 
-int dec_execF(uint16_t x, uint16_t kk, struct interpreter *chip) {
+// Decodes and executes the instructions Fx07, Fx0A, Fx15, Fx18, Fx1C, Fx29,
+// Fx33, Fx55, Fx65.
+static int dec_execF(uint16_t x, uint16_t kk, struct interpreter *chip) {
     uint8_t tmp = 0;
     uint8_t key_pressed = 0;
     switch (kk) {
@@ -321,6 +381,15 @@ int dec_exec(const uint16_t instr, struct interpreter *chip, int mode) {
     return res;
 }
 
+// If the timer is null, does nothing. If not and if the timer value is strictly
+// greater than 0, decrements its value.
+static void update_timer(uint8_t *timer) {
+    if (timer == NULL)
+        return;
+    if (timer > 0)
+        timer--;
+}
+
 void run_rom_cycle(struct interpreter *chip, struct proc_state *ps, int mode) {
     // check that pc is still in program
     if (chip->pc > RAM_SIZE) {
@@ -350,8 +419,6 @@ void run_rom_cycle(struct interpreter *chip, struct proc_state *ps, int mode) {
     }
 
     // update timers
-    if (chip->dt > 0)
-        chip->dt--;
-    if (chip->st > 0)
-        chip->st--;
+    update_timer(&chip->dt);
+    update_timer(&chip->st);
 }

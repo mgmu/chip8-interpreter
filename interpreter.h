@@ -57,25 +57,10 @@ struct proc_state {
 void init(struct interpreter *chip);
 
 /*
- * Decodes and executes 0nnn, 00E0, 00EE instructions. 0nnn is in fact ignored.
+ * Loads the ROM file denoted by filename into the given chip. Returns 0 on
+ * success, -1 otherwise.
  */
-int dec_exec0(uint16_t instr, struct interpreter *chip);
-
-/*
- * Decodes and executes the instructions 8xy0, ..., 8xy7, 8xyE.
- */
-int dec_exec8(uint16_t n, uint16_t x, uint16_t y, struct interpreter *chip);
-
-/*
- * Decodes and executes the instructions Ex9E, ExA1.
- */
-int dec_execE(uint16_t x, uint16_t kk, struct interpreter *chip);
-
-/*
- * Decodes and executes the instructions Fx07, Fx0A, Fx15, Fx18, Fx1C, Fx29,
- * Fx33, Fx55, Fx65.
- */
-int dec_execF(uint16_t x, uint16_t kk, struct interpreter *chip);
+int load_rom(char *filename, struct interpreter *chip);
 
 /*
  * Decodes the given instruction and executes it. On success, returns 0, -1
