@@ -25,3 +25,13 @@ to get a list of the ones that can be executed with this interpreter.
 > **_Note:_** If you want to run other ROMs, make sure they contain only the
 program part and not another interpreter, as this interpreter loads the ROM file
 content at address `0x0200` in RAM.
+
+### Processor error codes
+If an error occurs, the processor stops execution and the interpreter quits. The
+error code is output to standard output. Here is a table of the currently
+detected errors and their codes:
+
+| Error | Code | Description |
+|-------|------|-------------|
+| OUT_OF_RAM_ERR | 1 | The instruction to run is at an address beyond the RAM |
+| EXEC_ERR | 2 | The decoder and executer indicated in error |
