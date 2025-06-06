@@ -6,137 +6,12 @@
 #include <SDL3/SDL_main.h>
 #include "interpreter.h"
 
-#define MISSING_FILE_ERR "Missing file name\n"
+#define INVAL_ARG_ERR "Invalid number of arguments\n"
 #define CYCLE_DELAY      16 // Delay in ms between two processor cycles
-
-// Handles window and keyboard events, and udpates done and chip accordingly.
-void handle_sdl_events(bool *done, struct interpreter *chip) {
-    if (done == NULL || chip == NULL)
-        return;
-
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        switch (event.type) {
-          case SDL_EVENT_QUIT: // window
-            *done = true;
-            break;
-          case SDL_EVENT_KEY_DOWN: // keyboard
-            switch (event.key.key) {
-              case SDLK_1: // "1"
-                chip->keyboard[1] = KEY_DOWN;
-                break;
-              case SDLK_2: // "2"
-                chip->keyboard[2] = KEY_DOWN;
-                break;
-              case SDLK_3: // "3"
-                chip->keyboard[3] = KEY_DOWN;
-                break;
-              case SDLK_4: // "C"
-                chip->keyboard[12] = KEY_DOWN;
-                break;
-              case SDLK_Q: // "4"
-                chip->keyboard[4] = KEY_DOWN;
-                break;
-              case SDLK_W: // "5"
-                chip->keyboard[5] = KEY_DOWN;
-                break;
-              case SDLK_E: // "6"
-                chip->keyboard[6] = KEY_DOWN;
-                break;
-              case SDLK_R: // "D"
-                chip->keyboard[13] = KEY_DOWN;
-                break;
-              case SDLK_A: // "7"
-                chip->keyboard[7] = KEY_DOWN;
-                break;
-              case SDLK_S: // "8"
-                chip->keyboard[8] = KEY_DOWN;
-                break;
-              case SDLK_D: // "9"
-                chip->keyboard[9] = KEY_DOWN;
-                break;
-              case SDLK_F: // "E"
-                chip->keyboard[14] = KEY_DOWN;
-                break;
-              case SDLK_Z: // "A"
-                chip->keyboard[10] = KEY_DOWN;
-                break;
-              case SDLK_X: // "0"
-                chip->keyboard[0] = KEY_DOWN;
-                break;
-              case SDLK_C: // "B"
-                chip->keyboard[11] = KEY_DOWN;
-                break;
-              case SDLK_V: // "F"
-                chip->keyboard[15] = KEY_DOWN;
-                break;
-              default: // ignore other keys
-                break;
-            }
-            break;
-          case SDL_EVENT_KEY_UP: // keyboard
-            switch (event.key.key) {
-              case SDLK_1: // "1"
-                chip->keyboard[1] = KEY_UP;
-                break;
-              case SDLK_2: // "2"
-                chip->keyboard[2] = KEY_UP;
-                break;
-              case SDLK_3: // "3"
-                chip->keyboard[3] = KEY_UP;
-                break;
-              case SDLK_4: // "C"
-                chip->keyboard[12] = KEY_UP;
-                break;
-              case SDLK_Q: // "4"
-                chip->keyboard[4] = KEY_UP;
-                break;
-              case SDLK_W: // "5"
-                chip->keyboard[5] = KEY_UP;
-                break;
-              case SDLK_E: // "6"
-                chip->keyboard[6] = KEY_UP;
-                break;
-              case SDLK_R: // "D"
-                chip->keyboard[13] = KEY_UP;
-                break;
-              case SDLK_A: // "7"
-                chip->keyboard[7] = KEY_UP;
-                break;
-              case SDLK_S: // "8"
-                chip->keyboard[8] = KEY_UP;
-                break;
-              case SDLK_D: // "9"
-                chip->keyboard[9] = KEY_UP;
-                break;
-              case SDLK_F: // "E"
-                chip->keyboard[14] = KEY_UP;
-                break;
-              case SDLK_Z: // "A"
-                chip->keyboard[10] = KEY_UP;
-                break;
-              case SDLK_X: // "0"
-                chip->keyboard[0] = KEY_UP;
-                break;
-              case SDLK_C: // "B"
-                chip->keyboard[11] = KEY_UP;
-                break;
-              case SDLK_V: // "F"
-                chip->keyboard[15] = KEY_UP;
-                break;
-              default: // ignore other keys
-                break;
-            }
-            break;
-          default: // ignore other events
-            break;
-        }
-    }
-}
 
 int main(int argc, char **argv) {
     if (argc != 3 && argc != 4) {
-        dprintf(STDERR_FILENO, MISSING_FILE_ERR);
+        dprintf(STDERR_FILENO, INVAL_ARG_ERR);
         return EXIT_FAILURE;
     }
 
@@ -171,7 +46,7 @@ int main(int argc, char **argv) {
                     &window, &renderer)) {
         SDL_LogError(
           SDL_LOG_CATEGORY_APPLICATION,
-          "Could not create window and renderer: %s\n",
+          "Could not create window and rpenderer: %s\n",
           SDL_GetError()
         );
         ret = EXIT_FAILURE;
@@ -236,4 +111,3 @@ int main(int argc, char **argv) {
     SDL_Quit();
     return ret;
 }
-

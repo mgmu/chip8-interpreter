@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <strings.h>
+#include <SDL3/SDL.h>
 
 #define RAM_SIZE          4096       // The size in bytes of the ram
 #define PC_INIT           0x0200     // The initial address that PC points to
@@ -76,5 +77,10 @@ int dec_exec(const uint16_t instr, struct interpreter *chip, int mode);
  * debug mode (prints to standard output information about the cycle).
  */
 void run_rom_cycle(struct interpreter *chip, struct proc_state *ps, int mode);
+
+/*
+ * Handles window and keyboard events, and udpates done and chip accordingly.
+ */
+void handle_sdl_events(bool *done, struct interpreter *chip);
 
 #endif
