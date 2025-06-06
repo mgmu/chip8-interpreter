@@ -1,4 +1,4 @@
-# CHIP8 interpreter
+# CHIP-8 interpreter
 An interpreter for the CHIP-8 programming language written in C.
 
 ## How to run
@@ -13,6 +13,10 @@ Then run the `chip8` executable with at least two arguments:
 `
 ./chip8 <filename> <scale factor> [<debug mode>]
 `
+
+`<filename>` is a CHIP-8 program file. `<scale factor>` is a strictly positive
+integer (>0). If 1 is given, the display maintains its original size (64 x 32),
+on my computer a scale factor of 20 is good.
 
 The `<debug mode>` argument is optional. When a third argument is provided, the
 interpreter runs in debug mode that prints to standard output the state of the
