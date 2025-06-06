@@ -7,10 +7,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define NOT_REGULAR_ERR  "Not a regular file\n"
-#define TOO_LARGE_ERR    "File too large\n"
-#define TOO_SHORT_ERR    "File too short\n"
-#define MAX_ROM_SIZE     3840   // The maximal size in bytes of a ROM
+#define NOT_REGULAR_ERR "Not a regular file\n"
+#define TOO_LARGE_ERR   "File too large\n"
+#define TOO_SHORT_ERR   "File too short\n"
+#define MAX_ROM_SIZE    3840    // The maximal size in bytes of a ROM
+#define OUT_OF_RAM_ERR  1
+#define EXEC_ERR        2
 
 uint8_t char_sprites[CHAR_SPRITES_SIZE] = {
     0xf0, 0x90, 0x90, 0x90, 0xf0, // "0"
@@ -394,27 +396,27 @@ void run_rom_cycle(struct interpreter *chip, struct proc_state *ps, int mode) {
     // check that pc is still in program
     if (chip->pc > RAM_SIZE) {
         ps->curr_instr = 0;
-        ps->pc = chip->pc;
-        ps->err_code = 1;
+        ps->pc         = chip->pc;
+        ps->err_code   = OUT_OF_RAM_ERR;
         return;
     }
 
     // read instruction
-    uint16_t lb = (uint16_t)chip->ram[chip->pc] << 8;
-    uint16_t rb = (uint16_t)chip->ram[chip->pc + 1];
+    uint16_t lb    = (uint16_t)chip->ram[chip->pc] << 8;
+    uint16_t rb    = (uint16_t)chip->ram[chip->pc + 1];
     uint16_t instr = lb | rb;
     ps->curr_instr = instr;
 
     // set program counter to next instruction
     chip->pc += 2;
-    ps->pc = chip->pc;
-    if (instr == 0)
-        return;
+    ps->pc    = chip->pc;
 
     // decode and execute instruction
+    if (instr == 0)
+        return;
     int res = dec_exec(instr, chip, mode);
     if (res < 0) {
-        ps->err_code = 1;
+        ps->err_code = EXEC_ERR;
         return;
     }
 
